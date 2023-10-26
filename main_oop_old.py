@@ -6,7 +6,6 @@ import json
 import logging
 import pandas as pd
 
-from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -24,6 +23,12 @@ logging.basicConfig(filename='recommend_info.log', level=logging.INFO, format='%
 save_point_filename = "save_point"
 save_point_header = ["link_index", "url", "desc"]
 # END: Global variables
+
+# # Custom exception class with constructor arguments
+# class CustomException(Exception):
+#     def __init__(self, message, custom_variable):
+#         super().__init__(message)
+#         self.custom_variable = custom_variable
 
 # Global function
 def reformat_data_list_to_records(headers, list_item_list):
@@ -61,6 +66,20 @@ def list_extend_or_append_data(list, data):
 
 def csv_filename_checker(filename):
     return (filename if ".csv" in filename else filename+".csv")
+
+# # Higher-Order Function (HOC) to create a decorator
+# def handle_exceptions(func): 
+#     def wrapper(*args, **kwargs):
+#         try:
+#             result = func(*args, **kwargs)
+#         except CustomException as e:
+#             # You can handle the exception here (log it, raise a custom exception, etc.)
+#             result = None  # Or any other default value you want to return on exception
+#             logging.error(f"An error occurred when performing {func.__name__}: {e}")
+
+#             sys.exit("Script terminated due to an error.")
+#         return result
+#     return wrapper
 
 # END: Global function
 class WebScrapper:
@@ -251,14 +270,13 @@ class CSVFileManager:
     def is_file_exist(self, filename):
         return pd.io.common.file_exists(csv_filename_checker(filename))
 
-    def remove_duplicates_from_csv(self, filename, header):
-        filename = csv_filename_checker(filename)
+    def remove_duplicates_from_csv(self, read_filename, write_filename, header):
         # Read the CSV file into a pandas DataFrame
-        df = pd.read_csv(filename)        
+        df = pd.read_csv(read_filename)        
         # Remove duplicate rows based on all columns
         df_no_duplicates = df.drop_duplicates(subset=header, keep='first')
         # Save the cleaned DataFrame to a new CSV file
-        df_no_duplicates.to_csv(filename, index=False)
+        df_no_duplicates.to_csv(write_filename, index=False)
         
     
 class SavePointManager:
@@ -275,8 +293,8 @@ class SavePointManager:
     def read(self, save_point_filename=save_point_filename)-> None:
         save_point_filename = csv_filename_checker(save_point_filename)
         save_point_data_default = reformat_data_list_to_records(save_point_header,[0,None,None])
-        save_point_data_from_file = csv_file_manager.read(save_point_filename, save_point_header, "records")
-        self.save_point_data = save_point_data_from_file[0] if save_point_data_from_file else save_point_data_default
+        save_point_data_from_file = csv_file_manager.read(save_point_filename, save_point_header, "records")[0]
+        self.save_point_data = save_point_data_from_file if save_point_data_from_file else save_point_data_default
         print(f"save_point_data: {self.save_point_data}")
         if save_point_data_from_file:
             self.is_save_point_exist = True
@@ -320,23 +338,12 @@ def repeat_navigate_scrape_data_and_click_next_page_btn(web_scrapper, links, web
         save_point_manager.clear()
         try:
             while True:
+                # i+=1
+                # if i==4: return scrapped_data
+
                 # Navigate to the url
                 web_scrapper.navigate_to_page(url) 
                 # END: Navigate to the url
-                
-                # html_content = web_scrapper.driver.page_source
-                # # Parse the HTML content using Beautiful Soup
-                # soup = BeautifulSoup(html_content, 'html.parser')
-                
-                # # Define the regular expression pattern
-                # pattern = re.compile(r'target\d+')
-
-                # # Find all <script> tags containing the pattern
-                # matching_script_tags = soup.find_all('script', text=pattern)
-
-                # # Extract the content of matching <script> tags
-                # for script_tag in matching_script_tags:
-                #     print(script_tag)
 
                 try:
                     # Scrap the data (can have multiple scrap actions, because might want to scrap different things)
@@ -355,13 +362,18 @@ def repeat_navigate_scrape_data_and_click_next_page_btn(web_scrapper, links, web
                 except BaseException as inner_be:
                     # Handling Error Raised while scrapping data
                     logging.error(f"Error occurred inner exception: {inner_be}")
-                    logging.error(f"Stop at link_index: {link_index}, url: {url}, Error: {inner_be}", exc_info=True) # Log error into a file
+                    logging.error(f"Stop at link_index: {link_index}, url: {url}, Error: {inner_be}") # Log error into a file
                     save_point_record = reformat_data_list_to_records(save_point_header, [[link_index], [url], [desc]])
                     save_point_manager.write(save_point_record) # Save point
                     # END: Handling Error Raised while scrapping data
 
                 next_btn_element = web_scrapper.extract_element(pagination_next_btn_css_selector) if pagination_next_btn_css_selector else None
+
+                # print(f"scrapped data length: {len(scrapped_data)}")
+                print(f"scrapped data: {scrapped_data}")
                 flat_list = [element for innerList in scrapped_data for element in innerList]
+                # print(f"flat list length: {len(flat_list)}")
+                print(f"flat list: {flat_list}")
 
                 # Write the scrapped data into a csv file (if the data list more than 50 items inside)
                 if(len(flat_list) > 50 or not next_btn_element and is_data_scrap):
@@ -369,11 +381,13 @@ def repeat_navigate_scrape_data_and_click_next_page_btn(web_scrapper, links, web
                     write_file_data_header = write_file_data_header # Header(s) column of csv file we write
                     scrapped_records = reformat_data_list_to_records(write_file_data_header, scrapped_data) # reformat the headers and scrapped_data into this format: {'Header1':["data1","data2"],'Header2':["data3","data4"]}
                     csv_file_manager.append(scrapped_records, write_csv_file_name)
-                    
+                        
+                    # print(f"scrapped_data before clear: {scrapped_data}")
                     # Reset scrapped_data to empty
                     for list in scrapped_data:
                         list.clear()
                     # END: Reset scrapped_data to empty
+                    # print(f"scrapped_data after clear: {scrapped_data}")
 
                 # END: Write the scrapped data into a csv file 
 
@@ -385,7 +399,7 @@ def repeat_navigate_scrape_data_and_click_next_page_btn(web_scrapper, links, web
                 # END: Click "next page" btn
         except BaseException as outer_be:
             logging.error(f"Error occurred outside exception: {outer_be}")
-            logging.error(f"Stop at link_index: {link_index}, url: {url}, Error: {outer_be}", exc_info=True) # Log error into a file
+            logging.error(f"Stop at link_index: {link_index}, url: {url}, Error: {outer_be}") # Log error into a file
             save_point_record = reformat_data_list_to_records(save_point_header, [index, url, desc])
             save_point_manager.write(save_point_record) # Save point
             exit()
@@ -433,24 +447,23 @@ def website_scrap_action(read_csv_file_name, web_scrapper_action_names, web_scra
     # END: Section 3: Write the scrapped data into a csv file
 
     # Remove duplicated rows in CSV file
-    print("BEFORE remove duplicates of csv file")
-    csv_file_manager.remove_duplicates_from_csv(write_csv_file_name, write_file_data_header)
-    print("AFTER remove duplicates of csv file")
+    csv_file_manager.remove_duplicates_from_csv(read_csv_file_name, write_csv_file_name, write_file_data_header)
     # END: Remove duplicated rows in CSV file
+
 # END: Scraping function
 
 def main():
     recommend_web_scrape_steps_params = [
         # Sample
         # {
-        #     "desc": "Step 0", ## description for the step (for logging purpose)
-        #     "read_csv_file_name": "", ## the csv file where we read to get all the links to scrap through
-        #     "web_scrapper_action_names": ["extract_elements_links"], ## should in a list
-        #     "web_scrapper_action_params": [["div.left-side-content div.flickity-cell a"]],  ## should in a list, no. item inside should correspond to the no. item of variable [web_scrapper_action_names] above
-        #     "write_csv_file_name": "professional_categories_links", ## The csv file where we read to get all the links to scrap through
-        #     "write_file_data_header": ["Link"], ## should in a list
-        #     "pagination_next_btn_css_selector": None, ## indicate whats the pagination next page button css, if None means need not to click the button
-        #     "remove_urls_param_flag": False ## indicate whether is there a need to remove the url's param from the scrapped data
+        #     "desc": "Step 0",
+        #     "read_csv_file_name": "",
+        #     "web_scrapper_action_names": ["extract_elements_links"], # (should in a list)
+        #     "web_scrapper_action_params": [["div.left-side-content div.flickity-cell a"]],  # (should in a list)
+        #     "write_csv_file_name": "professional_categories_links",
+        #     "write_file_data_header": ["Link"], # (should in a list)
+        #     "pagination_next_btn_css_selector": None,
+        #     "remove_urls_param_flag": False
         # },
         # {
         #     "desc": "Step 1",
@@ -492,6 +505,17 @@ def main():
             "pagination_next_btn_css_selector": None,
             "remove_urls_param_flag": False,
         }
+        # {
+        #     "desc": "Step 4",
+        #     "read_csv_file_name": "",
+        #     "web_scrapper_action_names": ["extract_elements_texts", "extract_regex_from_script_tag"],
+        #     "web_scrapper_action_params": [["div.provider div.provider__meta div.provider__title h4.provider__name"], r'(\+?6?01\d{8,9})'],
+        #     "write_csv_file_name": "vendors_name_contact",
+        #     "write_file_data_header": ["Name", "Contact"],
+        #     "pagination_next_btn_css_selector": None,
+        #     "remove_urls_param_flag": False,
+        #     "link": "https://www.recommend.my/businesses/ma-global-design"
+        # }
     ]
 
     start_time = time.time()
@@ -500,8 +524,8 @@ def main():
         for step_params in recommend_web_scrape_steps_params:
             website_scrap_action(**step_params)
     except BaseException as be:
-        logging.error(f"Error occurred in main exception: {be}")
-        print(f"Error occurred in main exception: {be}")
+        logging.error(f"Error occurred in main exception:{be}")
+        print(f"Error occurred in main exception:{be}")
     else:
         end_time = time.time()
         elapsed_time = end_time - start_time
