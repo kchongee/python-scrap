@@ -4,7 +4,7 @@
 
 <!-- Configuration -->
 ## Configuration
-step 1: install all the software (python version >3)
+step 1: install python version 3, https://www.python.org/downloads/ (add to PATH)
 
 step 2: create virtual environment
 ```python -m venv venv```
@@ -20,6 +20,8 @@ step 5: run web scraping script
 
 
 ### Note
+Run following command:
+- ```python --version``` can check whether python is installed
 - ```which python``` to check which virtual environment was using
 - ```deactivate``` to leave current virtual environment
 - ```which python``` to check which virtual environment was using
