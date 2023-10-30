@@ -8,14 +8,11 @@
 ## Configuration
 step 1: install python version 3, https://www.python.org/downloads/ (add to PATH)
 
-step 2: create virtual environment
-```python -m venv venv```
+step 2: ```python -m venv venv``` to create virtual environment
 
-step 3: activate virtual environment
-```source venv/Scripts/activate```
+step 3: ```source venv/Scripts/activate``` to activate virtual environment
 
-step 4: install required python packages/libraries 
-```pip install -r requirements.txt``` to install all the packages written in the requirements.txt
+step 4: ```pip install -r requirements.txt``` to install all the packages written in the requirements.txt
 
 <br/>
 
@@ -36,7 +33,7 @@ step 2: Reformat data into desired format
     - ```deactivate``` to leave current virtual environment
     - ```pip install [packages]==[version]``` to install desire packages in desire version
     - ```pip freeze > requirements.txt``` to write all the packages installed in virtual environment into requirements.txt
-    
+
 - Virtual environment here similar to project dependencies, pip similar to composer in php, TLDR: venv = composer + phpenv
 
 
