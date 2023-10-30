@@ -244,7 +244,7 @@ class CSVFileManager:
     def is_file_exist(self, filename):
         return pd.io.common.file_exists(csv_filename_checker(filename))
 
-    def remove_duplicates_from_csv(self, filename):
+    def remove_null_and_duplicates_from_csv(self, filename):
         filename = csv_filename_checker(filename)
         # Read the CSV file into a pandas DataFrame
         df = pd.read_csv(filename, dtype=str)        
@@ -413,10 +413,12 @@ def website_scrap_action(read_csv_file_name, web_scraper_action_names, web_scrap
     # END: Section 2: Scrap data based on the links retrieved from and then save into csv file [Section 1]    
 
     # Section 3: Remove duplicated rows in CSV file
-    csv_file_manager.remove_duplicates_from_csv(write_csv_file_name)
+    csv_file_manager.remove_null_and_duplicates_from_csv(write_csv_file_name)
     # END: Section 3: Remove duplicated rows in CSV file
 # END: Scraping function
 
+
+# Main Function
 def main():
     recommend_web_scrape_steps_params = [
         # Sample
@@ -450,26 +452,26 @@ def main():
             "pagination_next_btn_css_selector": None,
             "remove_urls_param_flag": True,
         },
-        # {
-        #     "desc": "Step 3",
-        #     "read_csv_file_name": "professionals_links",
-        #     "web_scraper_action_names": ["extract_elements_links"],
-        #     "web_scraper_action_params": [["div.profile-card-top-left a.profile-card-title"]],
-        #     "write_csv_file_name": "profile_vendors_links",
-        #     "write_file_data_header": ["link"],
-        #     "pagination_next_btn_css_selector": "ul.pagination li.pagination-next a",
-        #     "remove_urls_param_flag": True,
-        # },
-        # {
-        #     "desc": "Step 4",
-        #     "read_csv_file_name": "profile_vendors_links",
-        #     "web_scraper_action_names": ["extract_elements_texts", "extract_regex_from_script_tag", "extract_regex_from_script_tag"],
-        #     "web_scraper_action_params": [["div.provider div.provider__meta div.provider__title h4.provider__name"], r'\.btn-whatsapp-call\b.*?(011\d{8}|01[0-46-9]\d{7}|0[2-9]\d{8})', r'\.btn-phone-call\b.*?(011\d{8}|01[0-46-9]\d{7}|0[2-9]\d{8})'], # store in new column
-        #     "write_csv_file_name": "vendors_name_contact",
-        #     "write_file_data_header": ["name", "whatsapp_number", "phonecall_number"],
-        #     "pagination_next_btn_css_selector": None,
-        #     "remove_urls_param_flag": False,
-        # }
+        {
+            "desc": "Step 3",
+            "read_csv_file_name": "professionals_links",
+            "web_scraper_action_names": ["extract_elements_links"],
+            "web_scraper_action_params": [["div.profile-card-top-left a.profile-card-title"]],
+            "write_csv_file_name": "profile_vendors_links",
+            "write_file_data_header": ["link"],
+            "pagination_next_btn_css_selector": "ul.pagination li.pagination-next a",
+            "remove_urls_param_flag": True,
+        },
+        {
+            "desc": "Step 4",
+            "read_csv_file_name": "profile_vendors_links",
+            "web_scraper_action_names": ["extract_elements_texts", "extract_regex_from_script_tag", "extract_regex_from_script_tag"],
+            "web_scraper_action_params": [["div.provider div.provider__meta div.provider__title h4.provider__name"], r'\.btn-whatsapp-call\b.*?(011\d{8}|01[0-46-9]\d{7}|0[2-9]\d{8})', r'\.btn-phone-call\b.*?(011\d{8}|01[0-46-9]\d{7}|0[2-9]\d{8})'], # store in new column
+            "write_csv_file_name": "vendors_name_contact",
+            "write_file_data_header": ["name", "whatsapp_number", "phonecall_number"],
+            "pagination_next_btn_css_selector": None,
+            "remove_urls_param_flag": False,
+        }
     ]    
 
     whole_script_timer = Timer()
@@ -494,3 +496,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+# END: Main Function
