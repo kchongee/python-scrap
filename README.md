@@ -15,8 +15,14 @@ step 3: activate virtual environment
 step 4: install required python packages/libraries 
 ```pip install -r requirements.txt``` to install all the packages written in the requirements.txt
 
-step 5: run web scraping script
-```python [filename].py```
+
+<!-- Execution -->
+## Execution
+step 1: run web scraping script
+```python scrap.py```
+
+step 2: Reformat data into desired format
+```python reformat_data.py```
 
 
 ### Note
