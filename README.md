@@ -20,7 +20,7 @@ step 4: ```pip install -r requirements.txt``` to install all the packages writte
 ## Execution
 step 1: ```python scrap.py``` to run web scraping script
 
-step 2: ```python reformat_data.py``` Reformat data into desired format
+step 2: ```python reformat_data.py``` to reformat the scrapped data into desired format
 
 <br/>
 
