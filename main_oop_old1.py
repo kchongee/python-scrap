@@ -25,8 +25,7 @@ logging.basicConfig(filename=logging_filename, level=logging.INFO, format='%(asc
 # Global function
 def reformat_data_list_to_records(headers, list_item_list):
     if len(headers) != len(list_item_list):
-        print(f"[reformat_data_list_to_records] --> Unmatch columns length")
-        logging.error(f"[reformat_data_list_to_records] --> Unmatch columns length", exc_info=True)
+        print("Unmatch columns length")
         exit()
     return {key: value for key, value in zip(headers, list_item_list)}
 
@@ -36,8 +35,7 @@ def reformat_data_records_to_list(headers, record_list):
         cols[header] = []
     for record in record_list:
         if len(headers) != len(record):
-            print(f"Headers length doesn't match with records key")
-            logging.error(f"[reformat_data_records_to_list] --> Headers length doesn't match with records key", exc_info=True)
+            print("Headers length doesn't match with records key")
             exit()
         for index, (key,value) in enumerate(record.items()):
             cols[headers[index]].append(value)
@@ -63,20 +61,15 @@ def csv_filename_checker(filename):
 # END: Global function
 
 
-# Classes
 class WebScraper:
     def __init__(self, url) -> None:
         self.url = url
         self.driver = webdriver.Chrome()
 
     def navigate_to_page(self, url) -> None:
-        try:
-            self.url = url if url else self.url
-            print(f"URL: {url}")
-            self.driver.get(self.url)
-        except Exception as e:
-            logging.error(f"Failed to navigate to {url}: {e}", exc_info=True)
-            print(f"Failed to navigate to {url}: {e}")
+        self.url = url if url else self.url
+        print(f"URL: {url}")
+        self.driver.get(self.url)
 
     def get_current_link(self) -> str:
         return self.driver.current_url
@@ -129,11 +122,11 @@ class WebScraper:
             f'return [...document.querySelectorAll("{css_selector}")].find(element => /{regex}/.test(element.textContent));'
         )
         if script_tag:
-            data = re.findall(regex, script_tag.get_attribute('outerHTML')) 
+            data = re.findall(regex, script_tag.get_attribute('outerHTML'))[0] # Extract the first matched data that fulfill the regex pattern
         else:
             print(f"{regex} not found in any script tags")
             return False
-        return data[0] # return the first matched data that fulfill the regex pattern
+        return data
     
     def extract_regex_from_script_tag(self, regex) -> str:
         return self.extract_regex("script", regex) # strictly from "script" tag only
@@ -244,16 +237,14 @@ class CSVFileManager:
     def is_file_exist(self, filename):
         return pd.io.common.file_exists(csv_filename_checker(filename))
 
-    def remove_duplicates_from_csv(self, filename):
+    def remove_duplicates_from_csv(self, filename, header):
         filename = csv_filename_checker(filename)
         # Read the CSV file into a pandas DataFrame
-        df = pd.read_csv(filename, dtype=str)        
-        # Remove rows with empty strings in any column
-        df_cleaned = df.dropna(subset=df.columns, how='all', inplace=False)
+        df = pd.read_csv(filename)        
         # Remove duplicate rows based on all columns
-        df_cleaned_no_duplicates = df_cleaned.drop_duplicates(subset=df.columns, keep='first')
+        df_no_duplicates = df.drop_duplicates(subset=header, keep='first')
         # Save the cleaned DataFrame to a new CSV file
-        df_cleaned_no_duplicates.to_csv(filename, index=False)
+        df_no_duplicates.to_csv(filename, index=False)
         
     
 class SavePointManager:
@@ -295,27 +286,12 @@ class SavePointManager:
         save_point_data_default = reformat_data_list_to_records(save_point_header,[0,None,None])
         self.save_point_data = save_point_data_default
 
-class Timer:
-    def __init__(self)-> None:
-        self.start_time = time.time()
-        self.stop_time = self.start_time
 
-    def start(self)-> None:
-        self.start_time = time.time()
-
-    def stop(self)-> None:
-        self.stop_time = time.time()
-
-    def get_execution_time(self):
-        return self.stop_time-self.start_time
-# END: Classes
-
-
-# Classes Configurations
+# Configurations
 web_scraper = WebScraper(default_link)
 csv_file_manager = CSVFileManager()
 save_point_manager = SavePointManager()
-# END: Classes Configurations
+# END: Configurations
 
 
 # Scraping function
@@ -323,20 +299,15 @@ def repeat_navigate_scrape_data_and_click_next_page_btn(web_scraper, links, web_
     default_scraped_data = [[] for _ in web_scraper_actions]
     scraped_data = copy.deepcopy(default_scraped_data)
 
-    # Check if save point in this step
     if save_point_manager.get_desc() != desc:
         csv_file_manager.write_header(write_file_data_header, write_csv_file_name)
-    # END: Check if save point in this step
 
     for link_index, link in enumerate(links[save_point_manager.get_link_index():], start=save_point_manager.get_link_index()):
         is_data_scrap = True # To indicate whether the scraping action scraped some data
         url = save_point_manager.get_url() if save_point_manager.get_url() else link
         save_point_manager.clear()
-        print(f"link_index: {link_index}")
         try:
             while True:
-                if not url:
-                    continue                
                 web_scraper.navigate_to_page(url) # Navigate to the url
 
                 try:
@@ -345,7 +316,9 @@ def repeat_navigate_scrape_data_and_click_next_page_btn(web_scraper, links, web_
                         param = web_scraper_params[index]
                         data = remove_urls_parameters(web_scraper_action(param)) if remove_urls_param_flag else web_scraper_action(param)
                         if not data:
-                            data = ""
+                            is_data_scrap = False
+                            scraped_data = copy.deepcopy(default_scraped_data) # Reset scraped_data to default empty
+                            break
                         list_extend_or_append_data(scraped_data[index], data) # extend if the scraped data is in a list, else append it
                     # END: Scrap data actions
                 except BaseException as inner_be:
@@ -378,8 +351,9 @@ def repeat_navigate_scrape_data_and_click_next_page_btn(web_scraper, links, web_
         except BaseException as outer_be:
             logging.error(f"Error occurred outside exception: {outer_be}")
             logging.error(f"Stop at link_index: {link_index}, url: {url}, Error: {outer_be}", exc_info=True) # Log error into a file
-            save_point_record = reformat_data_list_to_records(save_point_header, [[link_index], [url], [desc]])
+            save_point_record = reformat_data_list_to_records(save_point_header, [index, url, desc])
             save_point_manager.write(save_point_record) # Save point
+            exit()
 
 def website_scrap_action(read_csv_file_name, web_scraper_action_names, web_scraper_action_params, write_csv_file_name, write_file_data_header, pagination_next_btn_css_selector=None, remove_urls_param_flag=False, desc="Step 1", link=""):
     if save_point_manager.check_save_point_exist() and save_point_manager.get_desc() != desc:
@@ -413,7 +387,7 @@ def website_scrap_action(read_csv_file_name, web_scraper_action_names, web_scrap
     # END: Section 2: Scrap data based on the links retrieved from and then save into csv file [Section 1]    
 
     # Section 3: Remove duplicated rows in CSV file
-    csv_file_manager.remove_duplicates_from_csv(write_csv_file_name)
+    csv_file_manager.remove_duplicates_from_csv(write_csv_file_name, write_file_data_header)
     # END: Section 3: Remove duplicated rows in CSV file
 # END: Scraping function
 
@@ -430,67 +404,69 @@ def main():
         #     "pagination_next_btn_css_selector": None, ## indicate whats the pagination next page button css, if None means need not to click the button
         #     "remove_urls_param_flag": False ## indicate whether is there a need to remove the url's param from the scraped data
         # },
-        {
-            "desc": "Step 1",
-            "read_csv_file_name": "",
-            "web_scraper_action_names": ["extract_elements_links"],
-            "web_scraper_action_params": [["div.left-side-content div.flickity-cell a"]],
-            "write_csv_file_name": "professional_categories_links",
-            "write_file_data_header": ["link"],
-            "pagination_next_btn_css_selector": None,
-            "remove_urls_param_flag": False
-        },
-        {
-            "desc": "Step 2",
-            "read_csv_file_name": "professional_categories_links",
-            "web_scraper_action_names": ["extract_elements_links"],
-            "web_scraper_action_params": [["div#jsSideContent a.card-overlay-link","div#jsSideContent div.col a.text-info"]],
-            "write_csv_file_name": "professionals_links",
-            "write_file_data_header": ["link"],
-            "pagination_next_btn_css_selector": None,
-            "remove_urls_param_flag": True,
-        },
+        # {
+        #     "desc": "Step 1",
+        #     "read_csv_file_name": "",
+        #     "web_scraper_action_names": ["extract_elements_links"],
+        #     "web_scraper_action_params": [["div.left-side-content div.flickity-cell a"]],
+        #     "write_csv_file_name": "professional_categories_links",
+        #     "write_file_data_header": ["link"],
+        #     "pagination_next_btn_css_selector": None,
+        #     "remove_urls_param_flag": False
+        # },
+        # {
+        #     "desc": "Step 2",
+        #     "read_csv_file_name": "professional_categories_links",
+        #     "web_scraper_action_names": ["extract_elements_links"],
+        #     "web_scraper_action_params": [["div#jsSideContent a.card-overlay-link","div#jsSideContent div.col a.text-info"]],
+        #     "write_csv_file_name": "professionals_links",
+        #     "write_file_data_header": ["link"],
+        #     "pagination_next_btn_css_selector": None,
+        #     "remove_urls_param_flag": True,
+        # },
         # {
         #     "desc": "Step 3",
         #     "read_csv_file_name": "professionals_links",
         #     "web_scraper_action_names": ["extract_elements_links"],
-        #     "web_scraper_action_params": [["div.profile-card-top-left a.profile-card-title"]],
+        #     "web_scraper_action_params": [["div.profile-card-action div.business-contact a.profile-card-phone"]],
         #     "write_csv_file_name": "profile_vendors_links",
         #     "write_file_data_header": ["link"],
         #     "pagination_next_btn_css_selector": "ul.pagination li.pagination-next a",
         #     "remove_urls_param_flag": True,
         # },
-        # {
-        #     "desc": "Step 4",
-        #     "read_csv_file_name": "profile_vendors_links",
-        #     "web_scraper_action_names": ["extract_elements_texts", "extract_regex_from_script_tag", "extract_regex_from_script_tag"],
-        #     "web_scraper_action_params": [["div.provider div.provider__meta div.provider__title h4.provider__name"], r'\.btn-whatsapp-call\b.*?(011\d{8}|01[0-46-9]\d{7}|0[2-9]\d{8})', r'\.btn-phone-call\b.*?(011\d{8}|01[0-46-9]\d{7}|0[2-9]\d{8})'], # store in new column
-        #     "write_csv_file_name": "vendors_name_contact",
-        #     "write_file_data_header": ["name", "whatsapp_number", "phonecall_number"],
-        #     "pagination_next_btn_css_selector": None,
-        #     "remove_urls_param_flag": False,
-        # }
+        {
+            "desc": "Step 4",
+            "read_csv_file_name": "profile_vendors_links",
+            "web_scraper_action_names": ["extract_elements_texts", "extract_any_regexs_from_script_tag",],
+            "web_scraper_action_params": [["div.provider div.provider__meta div.provider__title h4.provider__name"], [r'(011\d{8}|01[0-46-9]\d{7})', r'60[2-9]\d{8}']], # assume both whatsapp-phone and call-phone having same phone number
+            "write_csv_file_name": "vendors_name_contact",
+            "write_file_data_header": ["name", "contact"],
+            "pagination_next_btn_css_selector": None,
+            "remove_urls_param_flag": False,
+        }
     ]    
 
-    whole_script_timer = Timer()
+    whole_start_time = time.time()
 
     for step_params in recommend_web_scrape_steps_params:
-        each_step_timer = Timer()
+        each_start_time = time.time()
         try:
             website_scrap_action(**step_params)
         except BaseException as be:
             logging.error(f"Error occurred in main exception: {be}", exc_info=True)
             print(f"Error occurred in main exception: {be}")
         finally:
-            each_step_timer.stop()
-            logging.info(f"<{step_params['desc']}> execution time: {each_step_timer.get_execution_time():.2f} seconds") # Log info into a file
-            print(f"<{step_params['desc']}> execution time: {each_step_timer.get_execution_time():.2f} seconds")    
-
-    whole_script_timer.stop()
-    logging.info(f"Whole script execution time: {whole_script_timer.get_execution_time():.2f} seconds") # Log info into a file
-    print(f"Whole script execution time: {whole_script_timer.get_execution_time():.2f} seconds")
-
+            each_end_time = time.time()
+            each_elapsed_time = each_end_time - each_start_time
+            logging.info(f"<{step_params['desc']}> execution time: {each_elapsed_time:.2f} seconds") # Log info into a file
+            print(f"<{step_params['desc']}> execution time: {each_elapsed_time:.2f} seconds")
+    
     web_scraper.close_browser()
+
+    whole_end_time = time.time()
+    whole_elapsed_time = whole_end_time - whole_start_time
+    logging.info(f"Whole script execution time: {whole_elapsed_time:.2f} seconds") # Log info into a file
+    print(f"Whole script execution time: {whole_elapsed_time:.2f} seconds")
 
 if __name__ == "__main__":
     main()
