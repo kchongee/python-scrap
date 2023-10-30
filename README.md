@@ -18,14 +18,13 @@ step 4: ```pip install -r requirements.txt``` to install all the packages writte
 
 <!-- Execution -->
 ## Execution
-step 1: run web scraping script
-```python scrap.py```
+step 1: ```python scrap.py``` to run web scraping script
 
-step 2: Reformat data into desired format
-```python reformat_data.py```
+step 2: ```python reformat_data.py``` Reformat data into desired format
 
 <br/>
 
+<!-- Additional Note -->
 ## Additional Note
 - Run following command:
     - ```python --version``` can check whether python is installed
