@@ -7,12 +7,6 @@ import json
 import logging
 import pandas as pd
 
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.remote.webelement import WebElement
-from selenium.webdriver.support import expected_conditions as EC
-
 # Global variables
 default_link = "https://www.recommend.my/services/all-services"
 save_point_filename = "save_point"
