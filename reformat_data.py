@@ -169,13 +169,13 @@ def main():
         df_cleaned_phone_column = df[[name_column, phone_column]].rename(columns={phone_column: contact_column}).dropna()        
 
         # Append the new rows to the original DataFrame
-        df_processed = pd.concat([df_cleaned_wa_column, df_cleaned_phone_column], ignore_index=True)
+        df_reformatted = pd.concat([df_cleaned_wa_column, df_cleaned_phone_column], ignore_index=True)
 
         # Remove duplicated rows (make rows unique) & sort by column "name"
-        df_processed_cleaned = df_processed.drop_duplicates(subset=df_processed.columns, keep='first').sort_values(by=[name_column])
+        df_reformatted_cleaned = df_reformatted.drop_duplicates(subset=df_reformatted.columns, keep='first').sort_values(by=[name_column])
 
         # Write the reformatted data into a csv file
-        df_processed_cleaned.to_csv(csv_filename_checker(write_filename), index=False)
+        df_reformatted_cleaned.to_csv(csv_filename_checker(write_filename), index=False)
 
     except BaseException as be:
         logging.error(f"Error occurred in main exception: {be}", exc_info=True)

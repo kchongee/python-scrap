@@ -10,7 +10,7 @@ step 1: install python version 3, https://www.python.org/downloads/ (add to PATH
 
 step 2: ```python -m venv venv``` to create virtual environment
 
-step 3: ```source venv/Scripts/activate``` to activate virtual environment
+step 3: ```source venv/Scripts/activate``` to enter/activate virtual environment
 
 step 4: ```pip install -r requirements.txt``` to install all the packages written in the requirements.txt
 
@@ -29,7 +29,7 @@ step 2: ```python reformat_data.py``` to reformat the scrapped data into desired
 - Run following command:
     - ```python --version``` can check whether python is installed
     - ```which python``` to check which virtual environment was using
-    - ```deactivate``` to leave current virtual environment
+    - ```deactivate``` to leave/deactivate current virtual environment
     - ```pip install [packages]==[version]``` to install desire packages in desire version
     - ```pip freeze > requirements.txt``` to write all the packages installed in virtual environment into requirements.txt
 
